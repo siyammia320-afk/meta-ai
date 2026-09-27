@@ -350,6 +350,23 @@ export default function App() {
     } catch (e) {}
   };
 
+  // Helper for safe JSON fetch
+  const fetchJson = async (url: string, options?: RequestInit) => {
+    const res = await fetch(url, options);
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      if (res.status >= 500) {
+        throw new Error("Server error (500). Please try again.");
+      }
+      if (res.status === 404) {
+        throw new Error("API endpoint not found (404)");
+      }
+      throw new Error(text.substring(0, 80) || `HTTP error ${res.status}`);
+    }
+  };
+
   // Login handler
   const doLogin = () => {
     const key = loginKeyInput.trim().toUpperCase();
@@ -360,12 +377,11 @@ export default function App() {
     setLoginLoading(true);
     setLoginStatus({ text: "⏳ Checking...", type: "info" });
 
-    fetch("/api/login", {
+    fetchJson("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key })
     })
-      .then((r) => r.json())
       .then((d) => {
         setLoginLoading(false);
         if (!d.success) {
@@ -396,12 +412,11 @@ export default function App() {
       const savedKey = localStorage.getItem("arafat_key");
       if (savedKey) {
         setLoginKeyInput(savedKey);
-        fetch("/api/login", {
+        fetchJson("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key: savedKey })
         })
-          .then((r) => r.json())
           .then((d) => {
             if (d.success) {
               setLoginKey(savedKey);

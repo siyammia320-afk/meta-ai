@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import axios from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { SocksProxyAgent } from "socks-proxy-agent";
@@ -1049,12 +1048,21 @@ app.get("/api/bot_avatar", async (req, res) => {
 
 // ==================== APP START ====================
 async function start() {
+  if (process.env.VERCEL || process.env.NOW_REGION) {
+    return;
+  }
+
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer } = await import("vite");
+      const vite = await createServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.error("Vite server error:", e);
+    }
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
     app.get("*", (req, res) => {
@@ -1062,11 +1070,9 @@ async function start() {
     });
   }
 
-  if (!process.env.VERCEL) {
-    app.listen(PORT, () => {
-      console.log(`Tools Website Server listening on port ${PORT}`);
-    });
-  }
+  app.listen(PORT, () => {
+    console.log(`Tools Website Server listening on port ${PORT}`);
+  });
 }
 
 start();
